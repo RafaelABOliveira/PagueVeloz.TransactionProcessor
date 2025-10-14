@@ -18,8 +18,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\PagueVeloz.Application\PagueVeloz.Application.csproj" />
-  </ItemGroup>
-
 </Project>

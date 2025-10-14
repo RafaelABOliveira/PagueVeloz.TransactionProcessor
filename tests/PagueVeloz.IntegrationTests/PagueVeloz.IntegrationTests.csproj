@@ -19,8 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\PagueVeloz.WebApi\PagueVeloz.WebApi.csproj" />
-    <ProjectReference Include="..\..\src\PagueVeloz.Infrastructure\PagueVeloz.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\PagueVeloz.Core\PagueVeloz.Core.csproj" />
   </ItemGroup>
 
 </Project>
