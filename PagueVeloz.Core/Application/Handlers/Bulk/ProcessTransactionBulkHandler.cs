@@ -40,20 +40,19 @@ namespace PagueVeloz.Core.Application.Handlers.Bulk
                                 ReferenceId = transactionRequest.ReferenceId,
                                 Description = transactionRequest.Description
                             },
-                            "debit" => new DebitOrReserveCommand
+                            "debit" => new DebitCommand
                             {
                                 AccountId = transactionRequest.AccountId,
                                 Amount = transactionRequest.Amount,
                                 ReferenceId = transactionRequest.ReferenceId,
                                 Description = transactionRequest.Description
                             },
-                            "reserve" => new DebitOrReserveCommand
+                            "reserve" => new ReserveCommand
                             {
                                 AccountId = transactionRequest.AccountId,
                                 Amount = transactionRequest.Amount,
                                 ReferenceId = transactionRequest.ReferenceId,
-                                Description = transactionRequest.Description,
-                                IsReservation = true
+                                Description = transactionRequest.Description
                             },
 
                             _ => throw new InvalidOperationException($"Operação inválida: {transactionRequest.Operation}")

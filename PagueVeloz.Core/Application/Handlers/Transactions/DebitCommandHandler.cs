@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 
 namespace PagueVeloz.Core.Application.Handlers.Transactions
 {
-    public class DebitOrReserveCommandHandler : IRequestHandler<DebitOrReserveCommand, TransactionResponse>
+    public class DebitCommandHandler : IRequestHandler<DebitCommand, TransactionResponse>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly ITransactionRepository _transactionRepository;
@@ -17,19 +17,17 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
 
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _accountLocks = new();
 
-        public DebitOrReserveCommandHandler(IAccountRepository accountRepository, ITransactionRepository transactionRepository, ILogger<DebitOrReserveCommandHandler> logger)
+        public DebitCommandHandler(IAccountRepository accountRepository, ITransactionRepository transactionRepository, ILogger<DebitCommandHandler> logger)
         {
             _accountRepository = accountRepository;
             _transactionRepository = transactionRepository;
             _logger = logger;
         }
 
-        public async Task<TransactionResponse> Handle(DebitOrReserveCommand command, CancellationToken cancellationToken)
+        public async Task<TransactionResponse> Handle(DebitCommand command, CancellationToken cancellationToken)
         {
-            string operationType = command.IsReservation ? "reserva" : "débito";
-
             _logger.LogInformation("Validation if value is greater than zero cents");
-            var minAmountResponse = TransactionValidationHelper.ValidateMinimumAmount(command.AccountId, command.Amount, _logger, operationType);
+            var minAmountResponse = TransactionValidationHelper.ValidateMinimumAmount(command.AccountId, command.Amount, _logger, "débito");
             if (minAmountResponse != null)
                 return minAmountResponse;
 
@@ -57,24 +55,10 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 }
 
                 var account = accountResponse.Data;
-
-                // Regra: saldo disponível + limite de crédito
-                long totalLimit;
-
-                if (command.IsReservation)
-                {
-                    _logger.LogInformation("Processing reservation for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
-                    totalLimit = account.AvailableBalance;
-                }
-                else
-                {
-                    _logger.LogInformation("Processing debit for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
-                    totalLimit = account.AvailableBalance + account.CreditLimit;
-                }
-
+                var totalLimit = account.AvailableBalance + account.CreditLimit;
                 if (command.Amount > totalLimit)
                 {
-                    string errorMessage = $"Saldo insuficiente para {operationType} considerando limite de crédito e saldo da conta disponível.";
+                    string errorMessage = "Saldo insuficiente para débito considerando limite de crédito e saldo da conta disponível.";
                     _logger.LogWarning("Debit transaction rejected: Amount exceeds available balance + credit limit for AccountId {AccountId}. Amount: {Amount}, TotalLimit: {TotalLimit}", command.AccountId, command.Amount, totalLimit);
 
                     return new TransactionResponse
@@ -89,13 +73,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     };
                 }
 
-
-                if (command.IsReservation)
-                {
-                    account.ReservedBalance += command.Amount;
-                }
-
-                if (!command.IsReservation && (command.Amount > account.AvailableBalance))
+                if (command.Amount > account.AvailableBalance)
                 {
                     var creditUsed = command.Amount - account.AvailableBalance;
                     account.AvailableBalance = 0;
@@ -106,13 +84,12 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     account.AvailableBalance -= command.Amount;
                 }
 
-
                 await _accountRepository.UpdateAsync(account);
 
                 var transaction = new Transaction
                 {
                     AccountId = account.AccountId,
-                    Type = command.IsReservation ? TransactionType.Reserve : TransactionType.Debit,
+                    Type = TransactionType.Debit,
                     Amount = command.Amount,
                     Description = command.Description
                 };
@@ -132,7 +109,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "{operationType} transaction failed for AccountId {AccountId}", operationType, command.AccountId);
+                _logger.LogError(ex, "debit transaction failed for AccountId {AccountId}", command.AccountId);
                 return new TransactionResponse
                 {
                     TransactionId = $"TXN-{command.AccountId}-FAILED",
