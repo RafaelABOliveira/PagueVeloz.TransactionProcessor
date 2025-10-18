@@ -1,11 +1,8 @@
-using Microsoft.Extensions.DependencyInjection;
-using PagueVeloz.Core;
+using PagueVeloz.Core.Application.Handlers.Transactions;
 using PagueVeloz.Infrastructure;
-using Serilog;
+using PagueVeloz.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -15,7 +12,14 @@ builder.Services.AddSwaggerGen(options =>
     options.SwaggerDoc("v1", new() { Title = "PagueVeloz API", Version = "v1" });
 });
 
+builder.Services.AddSingleton<ConnectionFactory>();
+
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(CreditCommandHandler).Assembly);
+});
 
 var app = builder.Build();
 
