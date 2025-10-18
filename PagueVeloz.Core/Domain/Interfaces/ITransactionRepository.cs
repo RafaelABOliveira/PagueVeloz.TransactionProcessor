@@ -4,7 +4,6 @@ namespace PagueVeloz.Core.Domain.Interfaces
 {
     public interface ITransactionRepository
     {
-        Task AddAsync(Transaction transaction);
-        Task<int> GenerateNextTransactionIdAsync();
+        Task<string> AddAsyncTransactionRegistry(Transaction transaction);
     }
 }

@@ -16,7 +16,7 @@ namespace PagueVeloz.Infrastructure.Persistence.Repositories
             _logger = logger;
         }
 
-        public async Task AddAsync(Transaction transaction)
+        public async Task<string> AddAsyncTransactionRegistry(Transaction transaction)
         {
             try
             {
@@ -26,82 +26,46 @@ namespace PagueVeloz.Infrastructure.Persistence.Repositories
                 await connection.OpenAsync();
                 _logger.LogInformation("Database connection opened. Inserting transaction.");
 
-                var sql = @"
+                // Insere a transação sem TransactionId e retorna o Id gerado
+                var insertSql = @"
                     INSERT INTO [Transaction] (
-                        TransactionId,
                         AccountId, 
                         TypeId, 
                         Amount, 
-                        Description
+                        Description,
+                        TransactionId
                     )
                     VALUES (
-                        @TransactionId,
                         @AccountId, 
                         @TypeId, 
                         @Amount, 
-                        @Description
+                        @Description,
+                        ''
                     );
+                    SELECT CAST(SCOPE_IDENTITY() AS int);
                 ";
 
-                using var command = new SqlCommand(sql, connection);
+                using var insertCommand = new SqlCommand(insertSql, connection);
+                insertCommand.Parameters.AddWithValue("@AccountId", transaction.AccountId);
+                insertCommand.Parameters.AddWithValue("@TypeId", (int)transaction.Type);
+                insertCommand.Parameters.AddWithValue("@Amount", transaction.Amount);
+                insertCommand.Parameters.AddWithValue("@Description", transaction.Description ?? string.Empty);
 
-                command.Parameters.AddWithValue("@TransactionId", transaction.TransactionId);
-                command.Parameters.AddWithValue("@AccountId", transaction.AccountId);
-                command.Parameters.AddWithValue("@TypeId", (int)transaction.Type);
-                command.Parameters.AddWithValue("@Amount", transaction.Amount);
-                command.Parameters.AddWithValue("@Description", transaction.Description);
+                var insertedId = (int)await insertCommand.ExecuteScalarAsync();
 
-                await command.ExecuteNonQueryAsync();
+                var selectSql = "SELECT TransactionId FROM [Transaction] WHERE Id = @Id";
+                using var selectCommand = new SqlCommand(selectSql, connection);
+                selectCommand.Parameters.AddWithValue("@Id", insertedId);
+                var transactionId = (string)await selectCommand.ExecuteScalarAsync();
 
-                _logger.LogInformation("Transaction successfully added. AccountId: {AccountId}, Amount: {Amount}", transaction.AccountId, transaction.Amount);
+                _logger.LogInformation("Transaction successfully added. AccountId: {AccountId}, Amount: {Amount}, TransactionId: {TransactionId}", transaction.AccountId, transaction.Amount, transactionId);
+
+                return transactionId;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding new transaction for AccountId {AccountId}", transaction.AccountId);
-                throw new InvalidOperationException("Error adding new transaction", ex);
-            }
-        }
-
-        public async Task<int> GenerateNextTransactionIdAsync()
-        {
-            try
-            {
-                using var connection = (SqlConnection)_connectionFactory.CreateConnection();
-                await connection.OpenAsync();
-
-                // Busca o maior Id atual da tabela Transaction
-                var sql = @"SELECT ISNULL(MAX(Id), 0) + 1 FROM [Transaction];";
-                using var command = new SqlCommand(sql, connection);
-                var nextId = (int)await command.ExecuteScalarAsync();
-
-                return nextId;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating next Transaction Id, trying random fallback");
-
-                using var connection = (SqlConnection)_connectionFactory.CreateConnection();
-                await connection.OpenAsync();
-
-                var sql = @"SELECT Id FROM [Transaction];";
-                using var command = new SqlCommand(sql, connection);
-                var existingIds = new HashSet<int>();
-                using (var reader = await command.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        existingIds.Add(reader.GetInt32(0));
-                    }
-                }
-
-                var random = new Random();
-                int randomId;
-                do
-                {
-                    randomId = random.Next(1, int.MaxValue);
-                } while (existingIds.Contains(randomId));
-
-                return randomId;
+                throw new InvalidOperationException($"Error adding new transaction: {ex.Message}", ex);
             }
         }
     }

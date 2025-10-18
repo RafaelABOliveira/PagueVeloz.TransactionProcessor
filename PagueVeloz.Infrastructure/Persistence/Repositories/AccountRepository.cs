@@ -92,7 +92,7 @@ namespace PagueVeloz.Infrastructure.Repositories
                 command.Parameters.AddWithValue("@AccountId", account.AccountId);
                 command.Parameters.AddWithValue("@AvailableBalance", account.AvailableBalance);
                 command.Parameters.AddWithValue("@ReservedBalance", account.ReservedBalance);
-                command.Parameters.AddWithValue("@CreditLimit", account.CreditLimit + account.AvailableBalance);
+                command.Parameters.AddWithValue("@CreditLimit", account.CreditLimit);
                 command.Parameters.AddWithValue("@StatusId", (byte)account.Status); 
 
                 _logger.LogInformation("Executing update for account {AccountId}", account.AccountId);

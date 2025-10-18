@@ -74,8 +74,20 @@ CREATE TABLE [Transaction]
         REFERENCES TransactionType(Id)
 );
 
+CREATE TRIGGER trg_SetTransactionId
+ON [Transaction]
+AFTER INSERT
+AS
+BEGIN
+    UPDATE t
+    SET TransactionId = CONCAT('TXN-', i.Id)
+    FROM [Transaction] t
+    INNER JOIN inserted i ON t.Id = i.Id
+END
+
 
 CREATE INDEX IX_Account_ClientId ON Account(ClientId);
+
 
 INSERT INTO Client (Name)
 VALUES 

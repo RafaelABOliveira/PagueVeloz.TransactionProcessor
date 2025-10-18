@@ -105,8 +105,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Returns(Task.CompletedTask);
 
             _transactionRepositoryMock
-                .Setup(x => x.AddAsync(It.IsAny<Transaction>()))
-                .Returns(Task.CompletedTask);
+                .Setup(x => x.AddAsyncTransactionRegistry(It.IsAny<Transaction>()))
+                .ReturnsAsync("testTransaction");
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -182,8 +182,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Returns(Task.CompletedTask);
 
             _transactionRepositoryMock
-                .Setup(x => x.AddAsync(It.IsAny<Transaction>()))
-                .Returns(Task.CompletedTask);
+                .Setup(x => x.AddAsyncTransactionRegistry(It.Is<Transaction>(t => t.AccountId == account.AccountId)))
+                .ReturnsAsync("testTransaction");
 
             // Act
             var results = new List<TransactionResponse>();
@@ -279,8 +279,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                     .Returns(Task.CompletedTask);
 
                 _transactionRepositoryMock
-                    .Setup(x => x.AddAsync(It.Is<Transaction>(t => t.AccountId == account.AccountId)))
-                    .Returns(Task.CompletedTask);
+                    .Setup(x => x.AddAsyncTransactionRegistry(It.Is<Transaction>(t => t.AccountId == account.AccountId)))
+                    .ReturnsAsync("testTransaction");
             }
 
             // Act
