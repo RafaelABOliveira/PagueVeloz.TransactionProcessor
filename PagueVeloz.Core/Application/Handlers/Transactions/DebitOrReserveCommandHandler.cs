@@ -59,7 +59,19 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 var account = accountResponse.Data;
 
                 // Regra: saldo disponível + limite de crédito
-                var totalLimit = account.AvailableBalance + account.CreditLimit;
+                long totalLimit;
+
+                if (command.IsReservation)
+                {
+                    _logger.LogInformation("Processing reservation for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
+                    totalLimit = account.AvailableBalance;
+                }
+                else
+                {
+                    _logger.LogInformation("Processing debit for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
+                    totalLimit = account.AvailableBalance + account.CreditLimit;
+                }
+
                 if (command.Amount > totalLimit)
                 {
                     string errorMessage = $"Saldo insuficiente para {operationType} considerando limite de crédito e saldo da conta disponível.";
@@ -77,26 +89,30 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     };
                 }
 
-                // Operação aprovada
-                account.AvailableBalance -= command.Amount;
 
-                if (command.IsReservation) //Se for reserva, adiciona ao saldo reservado
+                if (command.IsReservation)
                 {
                     account.ReservedBalance += command.Amount;
-                } else
-                {
-                    account.CreditLimit -= command.Amount;
                 }
 
-                if (account.AvailableBalance < 0)
-                    account.AvailableBalance = 0; // Não permite saldo negativo
+                if (!command.IsReservation && (command.Amount > account.AvailableBalance))
+                {
+                    var creditUsed = command.Amount - account.AvailableBalance;
+                    account.AvailableBalance = 0;
+                    account.CreditLimit -= creditUsed;
+                }
+                else
+                {
+                    account.AvailableBalance -= command.Amount;
+                }
+
 
                 await _accountRepository.UpdateAsync(account);
 
                 var transaction = new Transaction
                 {
                     AccountId = account.AccountId,
-                    Type = TransactionType.Debit,
+                    Type = command.IsReservation ? TransactionType.Reserve : TransactionType.Debit,
                     Amount = command.Amount,
                     Description = command.Description
                 };

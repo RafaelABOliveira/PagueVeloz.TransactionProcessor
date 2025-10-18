@@ -427,5 +427,47 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             account.AvailableBalance.Should().Be(expectedAvailable);
             account.ReservedBalance.Should().Be(expectedReserved);
         }
+
+        [Fact]
+        public async Task Handle_ShouldUseCreditLimit_WhenDebitExceedsAvailableBalance()
+        {
+            // Arrange
+            var account = _fixture.Build<Account>()
+                .With(x => x.AccountId, "acc-credit-limit")
+                .With(x => x.AvailableBalance, 100)
+                .With(x => x.CreditLimit, 200)
+                .With(x => x.ReservedBalance, 0)
+                .Create();
+
+            var command = _fixture.Build<DebitOrReserveCommand>()
+                .With(x => x.AccountId, account.AccountId)
+                .With(x => x.Amount, 150) // Exceeds available balance, will use 50 from credit limit
+                .With(x => x.IsReservation, false)
+                .Create();
+
+            _accountRepositoryMock
+                .Setup(x => x.GetByIdAsync(command.AccountId))
+                .ReturnsAsync(Response<Account>.Ok(account));
+
+            _accountRepositoryMock
+                .Setup(x => x.UpdateAsync(It.IsAny<Account>()))
+                .Returns(Task.CompletedTask);
+
+            _transactionRepositoryMock
+                .Setup(x => x.AddAsyncTransactionRegistry(It.IsAny<Transaction>()))
+                .ReturnsAsync("testTransaction");
+
+            // Act
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            // Assert
+            result.Status.Should().Be("success");
+            result.TransactionId.Should().Contain("PROCESSED");
+            result.ErrorMessage.Should().BeNull();
+            result.AvailableBalance.Should().Be(0);
+            result.ReservedBalance.Should().Be(0);
+            account.CreditLimit.Should().Be(150);
+            result.Balance.Should().Be(0);
+        }
     }
 }

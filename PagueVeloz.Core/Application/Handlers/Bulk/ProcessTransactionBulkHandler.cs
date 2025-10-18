@@ -55,6 +55,7 @@ namespace PagueVeloz.Core.Application.Handlers.Bulk
                                 Description = transactionRequest.Description,
                                 IsReservation = true
                             },
+
                             _ => throw new InvalidOperationException($"Operação inválida: {transactionRequest.Operation}")
                         };
 

@@ -57,7 +57,6 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 var account = accountResponse.Data;
 
                 account.AvailableBalance += command.Amount;
-                account.CreditLimit += command.Amount;
                 await _accountRepository.UpdateAsync(account);
 
                 var transaction = new Transaction
