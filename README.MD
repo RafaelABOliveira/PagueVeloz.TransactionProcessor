@@ -59,6 +59,25 @@ dotnet test tests/PagueVeloz.UnitTests
 
 - Checar connectionString's nos testes de Integração para operações reais no DB.
 
+- **Cobertura de Testes segundo a extensão FineCodeCoverage**:
+
+| Metric            | Value        |
+|------------------|-------------|
+| Assemblies        | 4           |
+| Classes           | 36          |
+| Files             | 36          |
+| Covered lines     | 2544        |
+| Uncovered lines   | 98          |
+| Coverable lines   | 2642        |
+| Total lines       | 3868        |
+| Line coverage     | 96.2% (2544/2642) |
+| Covered branches  | 224         |
+| Total branches    | 239         |
+| Branch coverage   | 93.7% (224/239)   |
+
+- Ponto de atenção na ferramenta: Os if's devem ser devidamente testados com as diferentes condições para garantir a cobertura total, pois pode haver divergência em outras ferramentas como o Sonar.
+
+
 ---
 
 ## Exemplos de uso da API
