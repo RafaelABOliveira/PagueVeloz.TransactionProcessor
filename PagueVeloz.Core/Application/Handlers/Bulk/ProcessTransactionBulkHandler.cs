@@ -68,6 +68,14 @@ namespace PagueVeloz.Core.Application.Handlers.Bulk
                                 ReferenceId = transactionRequest.ReferenceId,
                                 Description = transactionRequest.Description
                             },
+                            "transfer" => new TransferCommand
+                            {
+                                Amount = transactionRequest.Amount,
+                                SourceAccountId = transactionRequest.SourceAccountId ?? throw new InvalidOperationException("SourceAccountId is required for transfer operations."),
+                                TargetAccountId = transactionRequest.TargetAccountId ?? throw new InvalidOperationException("TargetAccountId is required for transfer operations."),
+                                ReferenceId = transactionRequest.ReferenceId,
+                                Description = transactionRequest.Description
+                            },
 
                             _ => throw new InvalidOperationException($"Operação inválida: {transactionRequest.Operation}")
                         };
