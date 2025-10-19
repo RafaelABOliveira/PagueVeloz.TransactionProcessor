@@ -74,7 +74,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             // Assert
             result.Status.Should().Be("failed");
             result.ErrorMessage.Should().Be("Account not found");
-            result.TransactionId.Should().Contain("FAILED");
+            result.TransactionId.Should().Contain("PROCESSED");
             result.Balance.Should().Be(0);
             result.ReservedBalance.Should().Be(0);
             result.AvailableBalance.Should().Be(0);
@@ -144,7 +144,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             // Assert
             result.Status.Should().Be("failed");
             result.ErrorMessage.Should().Be("Database error");
-            result.TransactionId.Should().Contain("FAILED");
+            result.TransactionId.Should().Contain("PROCESSED");
             result.Balance.Should().Be(0);
             result.ReservedBalance.Should().Be(0);
             result.AvailableBalance.Should().Be(0);

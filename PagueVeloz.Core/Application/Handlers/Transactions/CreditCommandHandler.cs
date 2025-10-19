@@ -44,7 +44,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     _logger.LogWarning("Failed to fetch account {AccountId}. Error: {ErrorMessage}", command.AccountId, accountResponse.ErrorMessage);
                     return new TransactionResponse
                     {
-                        TransactionId = $"TXN-{command.AccountId}-FAILED",
+                        TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                         Status = "failed",
                         ErrorMessage = accountResponse.ErrorMessage ?? "Erro sem mensagem, entre em contato com o TI",
                         Balance = 0,
@@ -85,7 +85,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 _logger.LogError(ex, "Credit transaction failed for AccountId {AccountId}", command.AccountId);
                 return new TransactionResponse
                 {
-                    TransactionId = $"TXN-{command.AccountId}-FAILED",
+                    TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                     Status = "failed",
                     Balance = 0,
                     ReservedBalance = 0,

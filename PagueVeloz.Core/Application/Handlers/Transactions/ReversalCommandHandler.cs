@@ -40,7 +40,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     _logger.LogWarning("Original transaction not found for ReferenceId {ReferenceId}", command.ReferenceId);
                     return new TransactionResponse
                     {
-                        TransactionId = $"TXN-{command.AccountId}-FAILED",
+                        TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                         Status = "failed",
                         ErrorMessage = "Transação original não encontrada para estorno.",
                         Balance = 0,
@@ -56,7 +56,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     _logger.LogWarning("Failed to fetch account {AccountId}. Error: {ErrorMessage}", command.AccountId, accountResponse.ErrorMessage);
                     return new TransactionResponse
                     {
-                        TransactionId = $"TXN-{command.AccountId}-FAILED",
+                        TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                         Status = "failed",
                         ErrorMessage = accountResponse.ErrorMessage ?? "Erro sem mensagem, entre em contato com o TI",
                         Balance = 0,
@@ -76,7 +76,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                         {
                             return new TransactionResponse
                             {
-                                TransactionId = $"TXN-{command.AccountId}-FAILED",
+                                TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                                 Status = "failed",
                                 ErrorMessage = "Saldo insuficiente para estorno de crédito.",
                                 Balance = account.AvailableBalance + account.ReservedBalance,
@@ -103,7 +103,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                         {
                             return new TransactionResponse
                             {
-                                TransactionId = $"TXN-{command.AccountId}-FAILED",
+                                TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                                 Status = "failed",
                                 ErrorMessage = "Saldo insuficiente para estorno de captura de reserva.",
                                 Balance = account.AvailableBalance + account.ReservedBalance,
@@ -119,7 +119,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                     default:
                         return new TransactionResponse
                         {
-                            TransactionId = $"TXN-{command.AccountId}-FAILED",
+                            TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                             Status = "failed",
                             ErrorMessage = "Tipo de transação original não suportado para estorno.",
                             Balance = account.AvailableBalance + account.ReservedBalance,
@@ -158,7 +158,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 _logger.LogError(ex, "Reversal transaction failed for AccountId {AccountId}", command.AccountId);
                 return new TransactionResponse
                 {
-                    TransactionId = $"TXN-{command.AccountId}-FAILED",
+                    TransactionId = $"TXN-{command.AccountId}-PROCESSED",
                     Status = "failed",
                     Balance = 0,
                     ReservedBalance = 0,
