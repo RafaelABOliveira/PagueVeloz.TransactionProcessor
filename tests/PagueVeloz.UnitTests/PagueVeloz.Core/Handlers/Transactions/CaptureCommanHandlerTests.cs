@@ -9,7 +9,7 @@ using PagueVeloz.Core.Application.Handlers.Transactions;
 using PagueVeloz.Core.Domain.Entities;
 using PagueVeloz.Core.Domain.Interfaces;
 
-namespace PagueVeloz.UnitTests.TransactionsHandler
+namespace PagueVeloz.UnitTests.PagueVeloz.Core.Handlers.Transactions
 {
     [Trait("Transaction Handler", "Capture")]
     public class CaptureCommandHandlerTests

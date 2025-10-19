@@ -9,18 +9,18 @@ using PagueVeloz.Core.Application.Handlers.Transactions;
 using PagueVeloz.Core.Domain.Entities;
 using PagueVeloz.Core.Domain.Interfaces;
 
-namespace PagueVeloz.UnitTests.TransactionsHandler
+namespace PagueVeloz.UnitTests.PagueVeloz.Core.Handlers.Transactions
 {
-    [Trait("Transaction Handler", "Credit")]
-    public class CreditCommandHandlerTests
+    [Trait("Transaction Handler", "Debit")]
+    public class DebitCommandHandlerTests
     {
         private readonly Fixture _fixture;
         private readonly Mock<IAccountRepository> _accountRepositoryMock;
         private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
-        private readonly Mock<ILogger<CreditCommandHandler>> _loggerMock;
-        private readonly CreditCommandHandler _handler;
+        private readonly Mock<ILogger<DebitCommandHandler>> _loggerMock;
+        private readonly DebitCommandHandler _handler;
 
-        public CreditCommandHandlerTests()
+        public DebitCommandHandlerTests()
         {
             _fixture = new Fixture();
             _fixture.Behaviors
@@ -31,8 +31,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
 
             _accountRepositoryMock = new Mock<IAccountRepository>();
             _transactionRepositoryMock = new Mock<ITransactionRepository>();
-            _loggerMock = new Mock<ILogger<CreditCommandHandler>>();
-            _handler = new CreditCommandHandler(
+            _loggerMock = new Mock<ILogger<DebitCommandHandler>>();
+            _handler = new DebitCommandHandler(
                 _accountRepositoryMock.Object,
                 _transactionRepositoryMock.Object,
                 _loggerMock.Object
@@ -42,15 +42,12 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         [Fact]
         public async Task Handle_ShouldReturnRejected_WhenAmountIsLessThanOne()
         {
-            // Arrange
-            var command = _fixture.Build<CreditCommand>()
+            var command = _fixture.Build<DebitCommand>()
                 .With(x => x.Amount, 0)
                 .Create();
 
-            // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
-            // Assert
             result.Status.Should().Be("rejected");
             result.ErrorMessage.Should().NotBeNullOrEmpty();
             result.TransactionId.Should().Contain("REJECTED");
@@ -59,8 +56,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         [Fact]
         public async Task Handle_ShouldReturnFailed_WhenAccountNotFound()
         {
-            // Arrange
-            var command = _fixture.Build<CreditCommand>()
+            var command = _fixture.Build<DebitCommand>()
                 .With(x => x.Amount, 100)
                 .Create();
 
@@ -68,10 +64,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Setup(x => x.GetByIdAsync(command.AccountId))
                 .ReturnsAsync(Response<Account>.Fail("Account not found"));
 
-            // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
-            // Assert
             result.Status.Should().Be("failed");
             result.ErrorMessage.Should().Be("Account not found");
             result.TransactionId.Should().Contain("PROCESSED");
@@ -81,19 +75,46 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnSuccess_WhenCreditIsProcessed()
+        public async Task Handle_ShouldReturnFailed_WhenInsufficientBalance()
         {
-            // Arrange
+            var account = _fixture.Build<Account>()
+                .With(x => x.AccountId, "acc-123")
+                .With(x => x.AvailableBalance, 100)
+                .With(x => x.CreditLimit, 50)
+                .Create();
+
+            var command = _fixture.Build<DebitCommand>()
+                .With(x => x.AccountId, account.AccountId)
+                .With(x => x.Amount, 200)
+                .Create();
+
+            _accountRepositoryMock
+                .Setup(x => x.GetByIdAsync(command.AccountId))
+                .ReturnsAsync(Response<Account>.Ok(account));
+
+            var result = await _handler.Handle(command, CancellationToken.None);
+
+            result.Status.Should().Be("failed");
+            result.ErrorMessage.Should().Contain("Saldo insuficiente");
+            result.TransactionId.Should().Contain("PROCESSED");
+            result.Balance.Should().Be(account.AvailableBalance + account.ReservedBalance);
+            result.AvailableBalance.Should().Be(account.AvailableBalance);
+            result.ReservedBalance.Should().Be(account.ReservedBalance);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldReturnSuccess_WhenDebitIsProcessed()
+        {
             var account = _fixture.Build<Account>()
                 .With(x => x.AccountId, "acc-123")
                 .With(x => x.AvailableBalance, 1000)
                 .With(x => x.ReservedBalance, 500)
+                .With(x => x.CreditLimit, 200)
                 .Create();
 
-            var command = _fixture.Build<CreditCommand>()
+            var command = _fixture.Build<DebitCommand>()
                 .With(x => x.AccountId, account.AccountId)
                 .With(x => x.Amount, 200)
-                .With(x => x.Currency, "BRL")
                 .Create();
 
             _accountRepositoryMock
@@ -108,10 +129,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Setup(x => x.AddAsyncTransactionRegistry(It.IsAny<Transaction>()))
                 .ReturnsAsync("testTransaction");
 
-            // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
-            // Assert
             result.Status.Should().Be("success");
             result.TransactionId.Should().Contain("testTransaction");
             result.Balance.Should().BeGreaterThanOrEqualTo(0);
@@ -123,13 +142,12 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         [Fact]
         public async Task Handle_ShouldReturnFailed_WhenExceptionIsThrown()
         {
-            // Arrange
             var account = _fixture.Build<Account>()
                 .With(x => x.AccountId, "acc-123")
                 .With(x => x.AvailableBalance, 1000)
                 .Create();
 
-            var command = _fixture.Build<CreditCommand>()
+            var command = _fixture.Build<DebitCommand>()
                 .With(x => x.AccountId, account.AccountId)
                 .With(x => x.Amount, 200)
                 .Create();
@@ -138,10 +156,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Setup(x => x.GetByIdAsync(command.AccountId))
                 .ThrowsAsync(new Exception("Database error"));
 
-            // Act
             var result = await _handler.Handle(command, CancellationToken.None);
 
-            // Assert
             result.Status.Should().Be("failed");
             result.ErrorMessage.Should().Be("Database error");
             result.TransactionId.Should().Contain("PROCESSED");
@@ -151,12 +167,11 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         }
 
         [Fact]
-        public async Task Handle_ShouldProcessManyCreditTransactions_ForSameAccount()
+        public async Task Handle_ShouldProcessManyDebitTransactionsAndVerifyAvailableBalance_ForSameAccount()
         {
-            // Arrange
             var account = _fixture.Build<Account>()
                 .With(x => x.AccountId, "acc-batch")
-                .With(x => x.AvailableBalance, 1000)
+                .With(x => x.AvailableBalance, 1000000000000)
                 .With(x => x.ReservedBalance, 0)
                 .Without(x => x.Transactions)
                 .Create();
@@ -164,14 +179,13 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             var initialBalance = account.AvailableBalance;
 
             var amounts = Enumerable.Range(1, 50).Select(i => (long)(i * 100)).ToList();
-            var commands = _fixture.Build<CreditCommand>()
+            var commands = _fixture.Build<DebitCommand>()
                 .With(x => x.AccountId, account.AccountId)
-                .With(x => x.Currency, "BRL")
                 .CreateMany(amounts.Count)
                 .ToList();
 
-            for (int creditCommand = 0; creditCommand < commands.Count; creditCommand++)
-                commands[creditCommand].Amount = amounts[creditCommand];
+            for (int debitCommand = 0; debitCommand < commands.Count; debitCommand++)
+                commands[debitCommand].Amount = amounts[debitCommand];
 
             _accountRepositoryMock
                 .Setup(x => x.GetByIdAsync(account.AccountId))
@@ -185,7 +199,6 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .Setup(x => x.AddAsyncTransactionRegistry(It.Is<Transaction>(t => t.AccountId == account.AccountId)))
                 .ReturnsAsync("testTransaction");
 
-            // Act
             var results = new List<TransactionResponse>();
             foreach (var command in commands)
             {
@@ -193,54 +206,36 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 results.Add(result);
             }
 
-            // Assert
             results.Should().HaveCount(amounts.Count);
-            foreach (var result in results)
+            long expectedAvailableBalance = initialBalance;
+            for (int resultOperation = 0; resultOperation < results.Count; resultOperation++)
             {
-                result.Status.Should().Be("success");
-                result.TransactionId.Should().Contain("testTransaction");
-                result.Balance.Should().BeGreaterThanOrEqualTo(1);
-                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(1);
-                result.ErrorMessage.Should().BeNull();
+                var result = results[resultOperation];
+                if (expectedAvailableBalance >= amounts[resultOperation])
+                {
+                    result.Status.Should().Be("success");
+                    result.TransactionId.Should().Contain("testTransaction");
+                    result.ErrorMessage.Should().BeNull();
+                    expectedAvailableBalance -= amounts[resultOperation];
+                }
+                else
+                {
+                    result.Status.Should().Be("failed");
+                    result.TransactionId.Should().Contain("PROCESSED");
+                    result.ErrorMessage.Should().Contain("Saldo insuficiente");
+                }
+                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
+                result.Balance.Should().BeGreaterThanOrEqualTo(0);
             }
 
-            account.AvailableBalance.Should().Be(initialBalance + amounts.Sum());
+            account.AvailableBalance.Should().Be(expectedAvailableBalance);
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnRejectedResponse_WhenAmountIsLessThanOne()
+        public async Task Handle_ShouldProcessManyDebitTransactions_ForDifferentManyAccounts()
         {
-            // Arrange
-            var accountId = "acc-reject";
-            var command = _fixture.Build<CreditCommand>()
-                .With(x => x.AccountId, accountId)
-                .With(x => x.Amount, 0)
-                .With(x => x.Currency, "BRL")
-                .Create();
-
-            // Act
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            // Assert
-            result.Should().NotBeNull();
-            result.TransactionId.Should().Be($"TXN-{accountId}-REJECTED");
-            result.Status.Should().Be("rejected");
-            result.ErrorMessage.Should().Be("O valor de crédito deve ser igual ou superior a 1 centavo (Amount >= 1).");
-            result.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-            result.Balance.Should().Be(0);
-            result.ReservedBalance.Should().Be(0);
-            result.AvailableBalance.Should().Be(0);
-            result.Balance.Should().Be(0);
-            result.ReservedBalance.Should().Be(0);
-            result.AvailableBalance.Should().Be(0);
-        }
-
-        [Fact]
-        public async Task Handle_ShouldProcessManyCreditTransactions_ForDifferentManyAccounts()
-        {
-            // Arrange
-            int accountCount = 50;
-            int transactionsPerAccount = 30;
+            int accountCount = 20;
+            int transactionsPerAccount = 3;
             var accounts = _fixture.Build<Account>()
                 .Without(x => x.Transactions)
                 .CreateMany(accountCount)
@@ -249,20 +244,20 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             for (int account = 0; account < accounts.Count; account++)
             {
                 accounts[account].AccountId = $"acc-{account + 1}";
-                accounts[account].AvailableBalance = 1000;
+                accounts[account].AvailableBalance = 10000;
                 accounts[account].ReservedBalance = 10;
+                accounts[account].CreditLimit = 1000;
             }
 
-            var commands = new List<(CreditCommand Command, Account Account, long Amount)>();
+            var commands = new List<(DebitCommand Command, Account Account, long Amount)>();
             foreach (var account in accounts)
             {
                 for (int t = 1; t <= transactionsPerAccount; t++)
                 {
                     long amount = t * 100;
-                    var command = _fixture.Build<CreditCommand>()
+                    var command = _fixture.Build<DebitCommand>()
                         .With(x => x.AccountId, account.AccountId)
                         .With(x => x.Amount, amount)
-                        .With(x => x.Currency, "BRL")
                         .Create();
                     commands.Add((command, account, amount));
                 }
@@ -283,7 +278,6 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                     .ReturnsAsync("testTransaction");
             }
 
-            // Act
             var results = new List<TransactionResponse>();
             foreach (var (command, _, _) in commands)
             {
@@ -291,23 +285,21 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 results.Add(result);
             }
 
-            // Assert
             results.Should().HaveCount(accountCount * transactionsPerAccount);
             foreach (var result in results)
             {
                 result.Status.Should().Be("success");
                 result.TransactionId.Should().Contain("testTransaction");
-                result.Balance.Should().BeGreaterThanOrEqualTo(1);
-                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(1);
-                result.ReservedBalance.Should().BeGreaterThanOrEqualTo(1);
+                result.Balance.Should().BeGreaterThanOrEqualTo(0);
+                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
+                result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);
                 result.ErrorMessage.Should().BeNull();
             }
 
-            // Each account's available balance should be increased by the sum of its transaction amounts
             foreach (var account in accounts)
             {
                 long expectedSum = Enumerable.Range(1, transactionsPerAccount).Select(x => x * 100L).Sum();
-                account.AvailableBalance.Should().Be(1000 + expectedSum);
+                account.AvailableBalance.Should().Be(10000 - expectedSum);
             }
         }
     }

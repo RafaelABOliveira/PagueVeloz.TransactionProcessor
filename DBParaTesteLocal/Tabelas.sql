@@ -59,7 +59,7 @@ CREATE TABLE [Transaction]
 (
     Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     TransactionId NVARCHAR(50) NOT NULL UNIQUE,   
-    AccountId NVARCHAR(20) NOT NULL UNIQUE,
+    AccountId NVARCHAR(20) NOT NULL,
     TypeId TINYINT NOT NULL,
     Amount BIGINT NOT NULL CHECK (Amount > 0),    
     Currency CHAR(3) NOT NULL DEFAULT 'BRL',
@@ -74,16 +74,21 @@ CREATE TABLE [Transaction]
         REFERENCES TransactionType(Id)
 );
 
-CREATE TRIGGER trg_SetTransactionId
-ON [Transaction]
+CREATE TRIGGER dbo.trg_SetTransactionId
+ON dbo.[Transaction]
 AFTER INSERT
 AS
 BEGIN
+    SET NOCOUNT ON;
+
     UPDATE t
-    SET TransactionId = CONCAT('TXN-', i.Id)
-    FROM [Transaction] t
-    INNER JOIN inserted i ON t.Id = i.Id
-END
+    SET 
+        t.TransactionId = CONCAT('TXN-', i.Id, '-PROCESSED'),
+        t.ReferenceId   = CONCAT('TXN-', i.Id)
+    FROM dbo.[Transaction] AS t
+    INNER JOIN inserted AS i ON t.Id = i.Id;
+END;
+GO
 
 
 CREATE INDEX IX_Account_ClientId ON Account(ClientId);

@@ -10,7 +10,7 @@ using PagueVeloz.Core.Domain.Entities;
 using PagueVeloz.Core.Domain.Enums;
 using PagueVeloz.Core.Domain.Interfaces;
 
-namespace PagueVeloz.UnitTests.TransactionsHandler
+namespace PagueVeloz.UnitTests.PagueVeloz.Core.Handlers.Transactions
 {
     [Trait("Transaction Handler", "Reversal")]
     public class ReversalCommandHandlerTests
@@ -273,7 +273,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
 
             _transactionRepositoryMock
                 .Setup(x => x.GetByReferenceIdAsync(command.ReferenceId, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new System.Exception("Database error"));
+                .ThrowsAsync(new Exception("Database error"));
 
             var result = await _handler.Handle(command, CancellationToken.None);
 

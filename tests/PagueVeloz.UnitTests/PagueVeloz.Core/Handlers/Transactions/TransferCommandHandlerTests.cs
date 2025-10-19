@@ -8,7 +8,7 @@ using PagueVeloz.Core.Application.Handlers.Transactions;
 using PagueVeloz.Core.Domain.Entities;
 using PagueVeloz.Core.Domain.Interfaces;
 
-namespace PagueVeloz.UnitTests.TransactionsHandler
+namespace PagueVeloz.UnitTests.PagueVeloz.Core.Handlers.Transactions
 {
     [Trait("Transaction Handler", "Transfer")]
     public class TransferCommandHandlerTests
@@ -217,7 +217,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
 
             _accountRepositoryMock
                 .Setup(x => x.GetByIdAsync(command.SourceAccountId))
-                .ThrowsAsync(new System.Exception("Database error"));
+                .ThrowsAsync(new Exception("Database error"));
 
             var result = await _handler.Handle(command, CancellationToken.None);
 

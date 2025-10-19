@@ -57,6 +57,8 @@ dotnet test tests/PagueVeloz.UnitTests
 
 - Usar a extensão FineCodeCoverage para visualizar a cobertura de testes no Visual Studio.
 
+- Checar connectionString's nos testes de Integração para operações reais no DB.
+
 ---
 
 ## Exemplos de uso da API
