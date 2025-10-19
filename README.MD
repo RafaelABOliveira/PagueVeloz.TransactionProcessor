@@ -1,4 +1,4 @@
-# PagueVeloz
+# PagueVeloz - Processador de Transações
 
 ## Visão Geral
 
@@ -27,3 +27,4 @@ Na pasta DBParaTesteLocal tem criação do DB das tabelas utilizadas, com trigge
 
 
 ---
+
