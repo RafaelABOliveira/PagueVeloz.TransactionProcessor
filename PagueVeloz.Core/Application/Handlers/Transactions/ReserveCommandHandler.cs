@@ -90,7 +90,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
 
                 return new TransactionResponse
                 {
-                    TransactionId = $"{transactionId}-PROCESSED",
+                    TransactionId = $"{transactionId}",
                     Status = "success",
                     Balance = account.AvailableBalance + account.ReservedBalance,
                     ReservedBalance = account.ReservedBalance,

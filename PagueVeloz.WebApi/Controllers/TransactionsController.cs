@@ -16,11 +16,9 @@ namespace PagueVeloz.WebApi.Controllers
             _mediator = mediator;
         }
 
-        // <summary>
-        // Processa várias transções financeiras (crédito, débito, reserva, etc.).
-        // maxDegreeOfParallelism ajustável conforme o DB no paralelismo feito
-        // Para operações pesadas, considere usar filas (RabbitMQ, Azure etc.) para evitar sobrecarga no banco de dados.
-        // </summary>
+        /// <summary>
+        /// Processa várias transações financeiras (crédito, débito, reserva, captura, estorno e transfer).
+        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(List<TransactionResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(List<TransactionResponse>), StatusCodes.Status400BadRequest)]
@@ -29,9 +27,9 @@ namespace PagueVeloz.WebApi.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var bulkCommand = new ProcessTransactionsBulkCommand { Requests = requests };
+            var bulkCommandTransactions = new ProcessTransactionsBulkCommand { Requests = requests };
 
-            var responses = await _mediator.Send(bulkCommand);
+            var responses = await _mediator.Send(bulkCommandTransactions);
 
             return Ok(responses);
         }

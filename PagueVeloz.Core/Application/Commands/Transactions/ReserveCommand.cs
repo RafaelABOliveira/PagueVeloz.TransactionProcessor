@@ -9,5 +9,6 @@ namespace PagueVeloz.Core.Application.Commands.Transactions
         public long Amount { get; set; }
         public string ReferenceId { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Currency { get; set; } = "BRL";
     }
 }

@@ -3,7 +3,7 @@ using PagueVeloz.Core.Application.DTOs.Transaction;
 
 namespace PagueVeloz.Core.Application.Commands.Transactions
 {
-    public class DebitCommand : IRequest<TransactionResponse>
+    public class ReversalCommand : IRequest<TransactionResponse>
     {
         public string AccountId { get; set; }
         public long Amount { get; set; }

@@ -132,7 +132,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             var result = await _handler.Handle(command, CancellationToken.None);
 
             result.Status.Should().Be("success");
-            result.TransactionId.Should().Contain("PROCESSED");
+            result.TransactionId.Should().Contain("testTransaction");
             result.Balance.Should().BeGreaterThanOrEqualTo(0);
             result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
             result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);
@@ -214,7 +214,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 if (expectedAvailableBalance >= amounts[resultOperation])
                 {
                     result.Status.Should().Be("success");
-                    result.TransactionId.Should().Contain("PROCESSED");
+                    result.TransactionId.Should().Contain("testTransaction");
                     result.ErrorMessage.Should().BeNull();
                     expectedAvailableBalance -= amounts[resultOperation];
                 }
@@ -289,7 +289,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             foreach (var result in results)
             {
                 result.Status.Should().Be("success");
-                result.TransactionId.Should().Contain("PROCESSED");
+                result.TransactionId.Should().Contain("testTransaction");
                 result.Balance.Should().BeGreaterThanOrEqualTo(0);
                 result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
                 result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);

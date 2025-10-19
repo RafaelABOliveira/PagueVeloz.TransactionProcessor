@@ -54,6 +54,20 @@ namespace PagueVeloz.Core.Application.Handlers.Bulk
                                 ReferenceId = transactionRequest.ReferenceId,
                                 Description = transactionRequest.Description
                             },
+                            "capture" => new CaptureCommand
+                            {
+                                AccountId = transactionRequest.AccountId,
+                                Amount = transactionRequest.Amount,
+                                ReferenceId = transactionRequest.ReferenceId,
+                                Description = transactionRequest.Description
+                            },
+                            "reversal" => new ReversalCommand
+                            {
+                                AccountId = transactionRequest.AccountId,
+                                Amount = transactionRequest.Amount,
+                                ReferenceId = transactionRequest.ReferenceId,
+                                Description = transactionRequest.Description
+                            },
 
                             _ => throw new InvalidOperationException($"Operação inválida: {transactionRequest.Operation}")
                         };

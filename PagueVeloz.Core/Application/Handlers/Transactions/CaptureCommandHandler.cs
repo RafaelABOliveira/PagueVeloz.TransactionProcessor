@@ -9,22 +9,25 @@ using System.Collections.Concurrent;
 
 namespace PagueVeloz.Core.Application.Handlers.Transactions
 {
-    public class CreditCommandHandler : IRequestHandler<CreditCommand, TransactionResponse>
+    public class CaptureCommandHandler : IRequestHandler<CaptureCommand, TransactionResponse>
     {
         private readonly IAccountRepository _accountRepository;
         private readonly ITransactionRepository _transactionRepository;
         private readonly ILogger _logger;
 
-        public CreditCommandHandler(IAccountRepository accountRepository, ITransactionRepository transactionRepository, ILogger<CreditCommandHandler> logger)
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _accountLocks = new();
+
+        public CaptureCommandHandler(
+            IAccountRepository accountRepository,
+            ITransactionRepository transactionRepository,
+            ILogger<CaptureCommandHandler> logger)
         {
             _accountRepository = accountRepository;
             _transactionRepository = transactionRepository;
             _logger = logger;
         }
 
-        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _accountLocks = new();
-
-        public async Task<TransactionResponse> Handle(CreditCommand command, CancellationToken cancellationToken)
+        public async Task<TransactionResponse> Handle(CaptureCommand command, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Validation if value is greater than zero cents");
             var minAmountResponse = TransactionValidationHelper.ValidateMinimumAmount(command.AccountId, command.Amount, _logger, "crédito");
@@ -36,7 +39,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
 
             try
             {
-                _logger.LogInformation("Processing credit for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
+                _logger.LogInformation("Processing capture for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
 
                 var accountResponse = await _accountRepository.GetByIdAsync(command.AccountId);
                 if (!accountResponse.Success || accountResponse.Data == null)
@@ -56,18 +59,35 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
 
                 var account = accountResponse.Data;
 
+                if (account.ReservedBalance < command.Amount)
+                {
+                    _logger.LogWarning("Insufficient reserved balance for capture. AccountId: {AccountId}, ReservedBalance: {ReservedBalance}, Amount: {Amount}", command.AccountId, account.ReservedBalance, command.Amount);
+                    return new TransactionResponse
+                    {
+                        TransactionId = $"TXN-{command.AccountId}-FAILED",
+                        Status = "failed",
+                        ErrorMessage = "Saldo reservado insuficiente para captura.",
+                        Balance = account.AvailableBalance + account.ReservedBalance,
+                        ReservedBalance = account.ReservedBalance,
+                        AvailableBalance = account.AvailableBalance,
+                        Timestamp = DateTime.UtcNow
+                    };
+                }
+
+                account.ReservedBalance -= command.Amount;
                 account.AvailableBalance += command.Amount;
                 await _accountRepository.UpdateAsync(account);
 
                 var transaction = new Transaction
                 {
                     AccountId = account.AccountId,
-                    Type = TransactionType.Credit,
+                    Type = TransactionType.Capture,
                     Amount = command.Amount,
-                    Description = command.Description
+                    Description = command.Description,
+                    ReferenceId = command.ReferenceId
                 };
 
-                _logger.LogInformation("Recording transaction for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
+                _logger.LogInformation("Recording capture transaction for AccountId {AccountId} with Amount {Amount}", command.AccountId, command.Amount);
                 string transactionId = await _transactionRepository.AddAsyncTransactionRegistry(transaction);
 
                 return new TransactionResponse
@@ -82,7 +102,7 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Credit transaction failed for AccountId {AccountId}", command.AccountId);
+                _logger.LogError(ex, "Capture transaction failed for AccountId {AccountId}", command.AccountId);
                 return new TransactionResponse
                 {
                     TransactionId = $"TXN-{command.AccountId}-FAILED",
@@ -99,6 +119,5 @@ namespace PagueVeloz.Core.Application.Handlers.Transactions
                 accountLock.Release();
             }
         }
-
     }
 }

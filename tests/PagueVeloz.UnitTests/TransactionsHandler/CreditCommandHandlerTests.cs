@@ -113,7 +113,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
 
             // Assert
             result.Status.Should().Be("success");
-            result.TransactionId.Should().Contain("PROCESSED");
+            result.TransactionId.Should().Contain("testTransaction");
             result.Balance.Should().BeGreaterThanOrEqualTo(0);
             result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
             result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);
@@ -198,7 +198,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             foreach (var result in results)
             {
                 result.Status.Should().Be("success");
-                result.TransactionId.Should().Contain("PROCESSED");
+                result.TransactionId.Should().Contain("testTransaction");
                 result.Balance.Should().BeGreaterThanOrEqualTo(1);
                 result.AvailableBalance.Should().BeGreaterThanOrEqualTo(1);
                 result.ErrorMessage.Should().BeNull();
@@ -225,7 +225,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             result.Should().NotBeNull();
             result.TransactionId.Should().Be($"TXN-{accountId}-REJECTED");
             result.Status.Should().Be("rejected");
-            result.ErrorMessage.Should().Be("O valor do crédito deve ser igual ou superior a 1 centavo (Amount >= 1).");
+            result.ErrorMessage.Should().Be("O valor de crédito deve ser igual ou superior a 1 centavo (Amount >= 1).");
             result.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
             result.Balance.Should().Be(0);
             result.ReservedBalance.Should().Be(0);
@@ -296,7 +296,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             foreach (var result in results)
             {
                 result.Status.Should().Be("success");
-                result.TransactionId.Should().Contain("PROCESSED");
+                result.TransactionId.Should().Contain("testTransaction");
                 result.Balance.Should().BeGreaterThanOrEqualTo(1);
                 result.AvailableBalance.Should().BeGreaterThanOrEqualTo(1);
                 result.ReservedBalance.Should().BeGreaterThanOrEqualTo(1);

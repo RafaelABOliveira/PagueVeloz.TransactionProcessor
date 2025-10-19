@@ -12,5 +12,6 @@ namespace PagueVeloz.Core.Domain.Entities
         public Account Account { get; set; }
         public string AccountId { get; set; }
         public string Description { get; set; }
+        public string ReferenceId { get; set; }
     }
 }

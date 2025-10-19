@@ -11,16 +11,16 @@ using PagueVeloz.Core.Domain.Interfaces;
 
 namespace PagueVeloz.UnitTests.TransactionsHandler
 {
-    [Trait("Transaction Handler", "Reserve")]
-    public class ReserveCommandHandlerTests
+    [Trait("Transaction Handler", "Capture")]
+    public class CaptureCommandHandlerTests
     {
         private readonly Fixture _fixture;
         private readonly Mock<IAccountRepository> _accountRepositoryMock;
         private readonly Mock<ITransactionRepository> _transactionRepositoryMock;
-        private readonly Mock<ILogger<ReserveCommandHandler>> _loggerMock;
-        private readonly ReserveCommandHandler _handler;
+        private readonly Mock<ILogger<CaptureCommandHandler>> _loggerMock;
+        private readonly CaptureCommandHandler _handler;
 
-        public ReserveCommandHandlerTests()
+        public CaptureCommandHandlerTests()
         {
             _fixture = new Fixture();
             _fixture.Behaviors
@@ -31,8 +31,8 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
 
             _accountRepositoryMock = new Mock<IAccountRepository>();
             _transactionRepositoryMock = new Mock<ITransactionRepository>();
-            _loggerMock = new Mock<ILogger<ReserveCommandHandler>>();
-            _handler = new ReserveCommandHandler(
+            _loggerMock = new Mock<ILogger<CaptureCommandHandler>>();
+            _handler = new CaptureCommandHandler(
                 _accountRepositoryMock.Object,
                 _transactionRepositoryMock.Object,
                 _loggerMock.Object
@@ -42,7 +42,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         [Fact]
         public async Task Handle_ShouldReturnRejected_WhenAmountIsLessThanOne()
         {
-            var command = _fixture.Build<ReserveCommand>()
+            var command = _fixture.Build<CaptureCommand>()
                 .With(x => x.Amount, 0)
                 .Create();
 
@@ -56,7 +56,7 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         [Fact]
         public async Task Handle_ShouldReturnFailed_WhenAccountNotFound()
         {
-            var command = _fixture.Build<ReserveCommand>()
+            var command = _fixture.Build<CaptureCommand>()
                 .With(x => x.Amount, 100)
                 .Create();
 
@@ -75,18 +75,17 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnFailed_WhenReservationInsufficientAvailableBalance()
+        public async Task Handle_ShouldReturnFailed_WhenInsufficientReservedBalance()
         {
             var account = _fixture.Build<Account>()
-                .With(x => x.AccountId, "acc-reserve-fail")
-                .With(x => x.AvailableBalance, 50)
-                .With(x => x.ReservedBalance, 0)
-                .With(x => x.CreditLimit, 0)
+                .With(x => x.AccountId, "acc-123")
+                .With(x => x.ReservedBalance, 50)
+                .With(x => x.AvailableBalance, 100)
                 .Create();
 
-            var command = _fixture.Build<ReserveCommand>()
+            var command = _fixture.Build<CaptureCommand>()
                 .With(x => x.AccountId, account.AccountId)
-                .With(x => x.Amount, 100)
+                .With(x => x.Amount, 200)
                 .Create();
 
             _accountRepositoryMock
@@ -96,23 +95,23 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
             var result = await _handler.Handle(command, CancellationToken.None);
 
             result.Status.Should().Be("failed");
+            result.ErrorMessage.Should().Contain("Saldo reservado insuficiente");
             result.TransactionId.Should().Contain("FAILED");
-            result.ErrorMessage.Should().Contain("Saldo insuficiente");
+            result.Balance.Should().Be(account.AvailableBalance + account.ReservedBalance);
             result.AvailableBalance.Should().Be(account.AvailableBalance);
             result.ReservedBalance.Should().Be(account.ReservedBalance);
-            result.Balance.Should().Be(account.AvailableBalance + account.ReservedBalance);
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnSuccess_WhenReservationIsProcessed()
+        public async Task Handle_ShouldReturnSuccess_WhenCaptureIsProcessed()
         {
             var account = _fixture.Build<Account>()
-                .With(x => x.AccountId, "acc-reserve")
+                .With(x => x.AccountId, "acc-123")
+                .With(x => x.ReservedBalance, 500)
                 .With(x => x.AvailableBalance, 1000)
-                .With(x => x.ReservedBalance, 100)
                 .Create();
 
-            var command = _fixture.Build<ReserveCommand>()
+            var command = _fixture.Build<CaptureCommand>()
                 .With(x => x.AccountId, account.AccountId)
                 .With(x => x.Amount, 200)
                 .Create();
@@ -143,11 +142,12 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         public async Task Handle_ShouldReturnFailed_WhenExceptionIsThrown()
         {
             var account = _fixture.Build<Account>()
-                .With(x => x.AccountId, "acc-err")
+                .With(x => x.AccountId, "acc-123")
+                .With(x => x.ReservedBalance, 500)
                 .With(x => x.AvailableBalance, 1000)
                 .Create();
 
-            var command = _fixture.Build<ReserveCommand>()
+            var command = _fixture.Build<CaptureCommand>()
                 .With(x => x.AccountId, account.AccountId)
                 .With(x => x.Amount, 200)
                 .Create();
@@ -167,23 +167,24 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
         }
 
         [Fact]
-        public async Task Handle_ShouldProcessManyReservations_ForSameAccount()
+        public async Task Handle_ShouldProcessManyCaptureTransactionsAndVerifyReservedBalance_ForSameAccount()
         {
             var account = _fixture.Build<Account>()
-                .With(x => x.AccountId, "acc-reserve-batch")
+                .With(x => x.AccountId, "acc-batch")
                 .With(x => x.AvailableBalance, 1000)
-                .With(x => x.ReservedBalance, 0)
+                .With(x => x.ReservedBalance, 100000)
                 .Without(x => x.Transactions)
                 .Create();
 
-            var initialAvailable = account.AvailableBalance;
             var initialReserved = account.ReservedBalance;
-
-            var amounts = new List<long> { 100, 200, 300, 400, 500 };
-            var commands = amounts.Select(amount => _fixture.Build<ReserveCommand>()
+            var amounts = Enumerable.Range(1, 20).Select(i => (long)(i * 100)).ToList();
+            var commands = _fixture.Build<CaptureCommand>()
                 .With(x => x.AccountId, account.AccountId)
-                .With(x => x.Amount, amount)
-                .Create()).ToList();
+                .CreateMany(amounts.Count)
+                .ToList();
+
+            for (int i = 0; i < commands.Count; i++)
+                commands[i].Amount = amounts[i];
 
             _accountRepositoryMock
                 .Setup(x => x.GetByIdAsync(account.AccountId))
@@ -198,43 +199,131 @@ namespace PagueVeloz.UnitTests.TransactionsHandler
                 .ReturnsAsync("testTransaction");
 
             var results = new List<TransactionResponse>();
-            long expectedAvailable = initialAvailable;
-            long expectedReserved = initialReserved;
             foreach (var command in commands)
             {
                 var result = await _handler.Handle(command, CancellationToken.None);
                 results.Add(result);
-                if (expectedAvailable >= command.Amount)
+            }
+
+            results.Should().HaveCount(amounts.Count);
+            long expectedReserved = initialReserved;
+            for (int i = 0; i < results.Count; i++)
+            {
+                var result = results[i];
+                if (expectedReserved >= amounts[i])
                 {
-                    expectedAvailable -= command.Amount;
-                    expectedReserved += command.Amount;
                     result.Status.Should().Be("success");
+                    result.TransactionId.Should().Contain("testTransaction");
                     result.ErrorMessage.Should().BeNull();
+                    expectedReserved -= amounts[i];
                 }
                 else
                 {
                     result.Status.Should().Be("failed");
-                    result.ErrorMessage.Should().Contain("Saldo insuficiente");
+                    result.TransactionId.Should().Contain("FAILED");
+                    result.ErrorMessage.Should().Contain("Saldo reservado insuficiente");
                 }
-                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
                 result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);
+                result.Balance.Should().BeGreaterThanOrEqualTo(0);
             }
-            account.AvailableBalance.Should().Be(expectedAvailable);
             account.ReservedBalance.Should().Be(expectedReserved);
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnRejected_WhenAmountIsNegative()
+        public async Task Handle_ShouldProcessManyCaptureTransactions_ForDifferentManyAccounts()
         {
-            var command = _fixture.Build<ReserveCommand>()
-                .With(x => x.Amount, -100)
+            int accountCount = 10;
+            int transactionsPerAccount = 2;
+            var accounts = _fixture.Build<Account>()
+                .Without(x => x.Transactions)
+                .CreateMany(accountCount)
+                .ToList();
+
+            for (int i = 0; i < accounts.Count; i++)
+            {
+                accounts[i].AccountId = $"acc-{i + 1}";
+                accounts[i].AvailableBalance = 1000;
+                accounts[i].ReservedBalance = 10000;
+            }
+
+            var commands = new List<(CaptureCommand Command, Account Account, long Amount)>();
+            foreach (var account in accounts)
+            {
+                for (int t = 1; t <= transactionsPerAccount; t++)
+                {
+                    long amount = t * 100;
+                    var command = _fixture.Build<CaptureCommand>()
+                        .With(x => x.AccountId, account.AccountId)
+                        .With(x => x.Amount, amount)
+                        .Create();
+                    commands.Add((command, account, amount));
+                }
+            }
+
+            foreach (var account in accounts)
+            {
+                _accountRepositoryMock
+                    .Setup(x => x.GetByIdAsync(account.AccountId))
+                    .ReturnsAsync(Response<Account>.Ok(account));
+
+                _accountRepositoryMock
+                    .Setup(x => x.UpdateAsync(It.Is<Account>(a => a.AccountId == account.AccountId)))
+                    .Returns(Task.CompletedTask);
+
+                _transactionRepositoryMock
+                    .Setup(x => x.AddAsyncTransactionRegistry(It.Is<Transaction>(t => t.AccountId == account.AccountId)))
+                    .ReturnsAsync("testTransaction");
+            }
+
+            var results = new List<TransactionResponse>();
+            foreach (var (command, _, _) in commands)
+            {
+                var result = await _handler.Handle(command, CancellationToken.None);
+                results.Add(result);
+            }
+
+            results.Should().HaveCount(accountCount * transactionsPerAccount);
+            foreach (var result in results)
+            {
+                result.Status.Should().Be("success");
+                result.TransactionId.Should().Contain("testTransaction");
+                result.Balance.Should().BeGreaterThanOrEqualTo(0);
+                result.AvailableBalance.Should().BeGreaterThanOrEqualTo(0);
+                result.ReservedBalance.Should().BeGreaterThanOrEqualTo(0);
+                result.ErrorMessage.Should().BeNull();
+            }
+
+            foreach (var account in accounts)
+            {
+                long expectedSum = Enumerable.Range(1, transactionsPerAccount).Select(x => x * 100L).Sum();
+                account.ReservedBalance.Should().Be(10000 - expectedSum);
+            }
+        }
+
+        [Fact]
+        public async Task Handle_ShouldReturnFailed_WhenReservedBalanceIsZero()
+        {
+            var account = _fixture.Build<Account>()
+                .With(x => x.AccountId, "acc-zero")
+                .With(x => x.ReservedBalance, 0)
+                .With(x => x.AvailableBalance, 1000)
                 .Create();
+
+            var command = _fixture.Build<CaptureCommand>()
+                .With(x => x.AccountId, account.AccountId)
+                .With(x => x.Amount, 100)
+                .Create();
+
+            _accountRepositoryMock
+                .Setup(x => x.GetByIdAsync(command.AccountId))
+                .ReturnsAsync(Response<Account>.Ok(account));
 
             var result = await _handler.Handle(command, CancellationToken.None);
 
-            result.Status.Should().Be("rejected");
-            result.ErrorMessage.Should().NotBeNullOrEmpty();
-            result.TransactionId.Should().Contain("REJECTED");
+            result.Status.Should().Be("failed");
+            result.ErrorMessage.Should().Contain("Saldo reservado insuficiente");
+            result.TransactionId.Should().Contain("FAILED");
+            result.ReservedBalance.Should().Be(0);
         }
     }
 }

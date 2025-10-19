@@ -1,7 +1,8 @@
-﻿using PagueVeloz.Core.Domain.Entities;
-using PagueVeloz.Core.Domain.Interfaces;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using PagueVeloz.Core.Domain.Entities;
+using PagueVeloz.Core.Domain.Enums;
+using PagueVeloz.Core.Domain.Interfaces;
 
 namespace PagueVeloz.Infrastructure.Persistence.Repositories
 {
@@ -66,6 +67,55 @@ namespace PagueVeloz.Infrastructure.Persistence.Repositories
             {
                 _logger.LogError(ex, "Error adding new transaction for AccountId {AccountId}", transaction.AccountId);
                 throw new InvalidOperationException($"Error adding new transaction: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<Transaction?> GetByReferenceIdAsync(string referenceId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.LogInformation("Searching transaction by ReferenceId {ReferenceId}", referenceId);
+
+                using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+                await connection.OpenAsync(cancellationToken);
+
+                var sql = @"
+                    SELECT 
+                        Id,
+                        TransactionId,
+                        AccountId,
+                        TypeId,
+                        Amount,
+                        Description,
+                        ReferenceId
+                    FROM [Transaction]
+                    WHERE ReferenceId = @ReferenceId
+                ";
+
+                using var command = new SqlCommand(sql, connection);
+                command.Parameters.AddWithValue("@ReferenceId", referenceId);
+
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    return new Transaction
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        TransactionId = reader.GetString(reader.GetOrdinal("TransactionId")),
+                        AccountId = reader.GetString(reader.GetOrdinal("AccountId")),
+                        Type = (TransactionType)reader.GetByte(reader.GetOrdinal("TypeId")),
+                        Amount = reader.GetInt64(reader.GetOrdinal("Amount")),
+                        Description = reader.GetString(reader.GetOrdinal("Description")),
+                        ReferenceId = reader.GetString(reader.GetOrdinal("ReferenceId"))
+                    };
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching transaction by ReferenceId {ReferenceId}", referenceId);
+                throw new InvalidOperationException($"Error searching transaction: {ex.Message}", ex);
             }
         }
     }

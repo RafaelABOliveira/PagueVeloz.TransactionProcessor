@@ -8,7 +8,7 @@ public static class TransactionValidationHelper
     {
         if (amount < 1)
         {
-            string errorMessage = $"O valor do {operationType} deve ser igual ou superior a 1 centavo (Amount >= 1).";
+            string errorMessage = $"O valor de {operationType} deve ser igual ou superior a 1 centavo (Amount >= 1).";
             logger.LogWarning("{Operation} transaction rejected: Amount invalid for AccountId {AccountId}. Amount: {Amount}", operationType, accountId, amount);
 
             return new TransactionResponse
