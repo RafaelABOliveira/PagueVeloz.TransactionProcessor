@@ -4,6 +4,7 @@
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+		<PackageReference Include="Polly" Version="8.6.4" />
 	</ItemGroup>
 
 	<PropertyGroup>
