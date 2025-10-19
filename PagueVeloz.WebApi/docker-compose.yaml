@@ -1,0 +1,33 @@
+services:
+  pagueveloz-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: pagueveloz-db
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Your_passwordPagueVeloz123
+    ports:
+      - "1433:1433"
+    volumes:
+      - pagueveloz-db-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "sqlcmd -S localhost -U sa -P Your_passwordPagueVeloz123 -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pagueveloz-webapi:
+    build:
+      context: ../
+      dockerfile: PagueVeloz.WebApi/Dockerfile
+    container_name: pagueveloz-webapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=localhost;Database=PagueVeloz;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;
+    ports:
+      - "5000:8080"
+    depends_on:
+      pagueveloz-db:
+        condition: service_healthy
+
+volumes:
+  pagueveloz-db-data:

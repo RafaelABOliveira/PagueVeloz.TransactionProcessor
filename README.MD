@@ -48,6 +48,11 @@ Na pasta DBParaTesteLocal tem criação do DB das tabelas utilizadas, com trigge
 
 - Executar os comandos SQL na pasta DBParaTesteLocal para criar o banco de dados e tabelas necessárias para testes locais.
 
+-**Para subir um container**:
+	- Entre no projeto via console na camada PagueVeloz.TransactionProcessor\PagueVeloz.WebApi
+
+	docker-compose -f docker-compose.yaml up --build
+
 ---
 
 ## Execução dos Testes
@@ -75,7 +80,7 @@ dotnet test tests/PagueVeloz.UnitTests
 | Total branches    | 239         |
 | Branch coverage   | 93.7% (224/239)   |
 
-- Ponto de atenção na ferramenta: Os if's devem ser devidamente testados com as diferentes condições para garantir a cobertura total, pois pode haver divergência em outras ferramentas como o Sonar.
+- Ponto de atenção na ferramenta: Os if's devem ser devidamente testados com as diferentes condições para garantir a cobertura total, pois pode haver divergência na porcentagem de cobertura em outras ferramentas como o Sonar.
 
 
 ---
