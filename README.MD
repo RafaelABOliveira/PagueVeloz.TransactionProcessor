@@ -22,6 +22,7 @@ Na pasta DBParaTesteLocal tem criação do DB das tabelas utilizadas, com trigge
 	- **Testabilidade de várias chamadas:** Vários objetos podem ser adicionados para serem testados em uma única chamada inclusive para verificar riscos de concorrência.
 -**Observabilidade**: Foi implementado logging's detalhado para auditoria e monitoramento das transações financeiras através do Microsoft.Extensions.Logging.
 -**DI**: Injeção de dependência para facilitar testes(Retornos e Mocks) e modularidade. 
+-**TransactionId e ReferenceId**: Definidos via trigger para evitar concorrência diretamente no DB.
 
 ---
 
@@ -156,3 +157,5 @@ Com esse JSON foi capturado regras de concorrência não cumpridas que foram res
 ```
 
 Cada operação irá considerar as infos necessárias para isso. Por exemplo, para transferência, deve-se informar `sourceAccountId` e `targetAccountId`.
+Apesar o referenceId estar na chamada, ele é definido de outra forma através de trigger no DB para maior consistência e segurança na criação, para evitar duplicações.
+
