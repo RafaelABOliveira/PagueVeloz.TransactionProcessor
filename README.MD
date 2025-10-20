@@ -44,8 +44,8 @@ Na pasta DBParaTesteLocal tem criação do DB das tabelas utilizadas, com trigge
   - SQL Server (local)
 
 - Execução atráves do Visual Studio 2022 ou via CLI .NET:
-  dotnet build
-  dotnet run --project PagueVeloz.WebApi
+	- dotnet build
+	- dotnet run --project PagueVeloz.WebApi
 
 - Executar os comandos SQL na pasta DBParaTesteLocal para criar o banco de dados e tabelas necessárias para testes locais.
 
@@ -158,4 +158,5 @@ Com esse JSON foi capturado regras de concorrência não cumpridas que foram res
 
 Cada operação irá considerar as infos necessárias para isso. Por exemplo, para transferência, deve-se informar `sourceAccountId` e `targetAccountId`.
 Apesar o referenceId estar na chamada, ele é definido de outra forma através de trigger no DB para maior consistência e segurança na criação, para evitar duplicações.
+
 
